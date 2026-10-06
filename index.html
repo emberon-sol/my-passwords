@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Family Password Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-900 min-h-screen p-4 sm:p-8 flex items-center justify-center">
+
+    <!-- หน้าต่างยืนยันตัวตน -->
+    <div id="authScreen" class="max-w-md w-full bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl text-center">
+        <div class="w-12 h-12 bg-indigo-600/20 text-indigo-400 rounded-xl flex items-center justify-center mx-auto mb-4 text-xl">🔒</div>
+        <h2 class="text-xl font-bold text-white mb-2">ยืนยันตัวตนผู้จัดการ</h2>
+        <p class="text-slate-400 text-xs mb-6">กรอกรหัสผ่านอะไรก็ได้เพื่อปลดล็อค (เช่น 1234)</p>
+        <input type="password" id="masterKeyInput" placeholder="รหัสผ่านหลัก" class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+        <button onclick="unlockApp()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition text-sm shadow-lg">ปลดล็อคเข้าสู่ระบบ</button>
+    </div>
+
+    <!-- หน้าแดชบอร์ดหลัก -->
+    <div id="appScreen" class="max-w-3xl w-full hidden">
+        <div class="bg-slate-800 border border-slate-700 text-white p-6 rounded-2xl shadow-lg mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <span class="bg-emerald-500/10 text-emerald-400 text-xs px-3 py-1 rounded-full font-medium border border-emerald-500/20">● ระบบผู้จัดการ</span>
+                <h1 class="text-2xl font-bold mt-2">🛡️ คลังรหัสผ่านครอบครัว</h1>
+                <p class="text-slate-400 text-xs mt-1">จัดการข้อมูลและสมาชิกได้อิสระ</p>
+            </div>
+            <button onclick="lockApp()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-4 py-2.5 rounded-xl transition">ล็อคหน้าจอ</button>
+        </div>
+
+        <!-- ส่วนแสดงปุ่มสมาชิกทั้งหมด + ปุ่มเพิ่มสมาชิก -->
+        <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-medium text-slate-400">เลือกสมาชิกที่ต้องการจัดการ:</span>
+            <button onclick="openMemberModal()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
+                ➕ เพิ่มสมาชิกใหม่
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" id="profileTabs">
+            <!-- สร้างปุ่มสมาชิกอัตโนมัติจากโค้ด JS -->
+        </div>
+
+        <!-- พื้นที่แสดงข้อมูลรหัสผ่าน -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-sm p-6 text-white">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 id="currentProfileTitle" class="text-lg font-bold">กำลังจัดการข้อมูลของ: -</h2>
+                </div>
+                <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-4 py-2.5 rounded-xl transition shadow-sm">
+                    ➕ เพิ่มบัญชีใหม่
+                </button>
+            </div>
+            <div id="passwordList" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- หน้าต่าง Pop-up เพิ่มบัญชีรหัสผ่าน -->
+    <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs hidden justify-center items-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl text-white">
+            <h3 class="text-base font-bold mb-4">เพิ่มข้อมูลรหัสผ่าน</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">ชื่อเว็บไซต์ / บริการ</label>
+                    <input type="text" id="siteInput" placeholder="เช่น Facebook, ธนาคาร" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">ยูสเซอเนม / อีเมล</label>
+                    <input type="text" id="userInput" placeholder="ชื่อผู้ใช้" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">รหัสผ่าน</label>
+                    <input type="text" id="passInput" placeholder="รหัสผ่าน" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-2.5 mt-6">
+                    <button onclick="closeModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition">ยกเลิก</button>
+                    <button onclick="savePassword()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-medium transition shadow-sm">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- หน้าต่าง Pop-up เพิ่มสมาชิกใหม่ -->
+    <div id="memberModal" class="fixed inset-0 bg-black/70 backdrop-blur-xs hidden justify-center items-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-white">
+            <h3 class="text-base font-bold mb-4">เพิ่มสมาชิกใหม่</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">ชื่อสมาชิก (เช่น น้อง, พี่, สามี)</label>
+                    <input type="text" id="memberNameInput" placeholder="ระบุชื่อสมาชิก" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="flex gap-2.5 mt-6">
+                    <button onclick="closeMemberModal()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl text-xs font-medium transition">ยกเลิก</button>
+                    <button onclick="saveNewMember()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-medium transition shadow-sm">เพิ่มสมาชิก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // โครงสร้างข้อมูลเริ่มต้น (เก็บรายชื่อสมาชิกและข้อมูลรหัสผ่าน)
+        let appData = {
+            members: [
+                { id: 'me', name: 'ของฉัน' },
+                { id: 'mom', name: 'ของแม่' },
+                { id: 'dad', name: 'ของพ่อ' },
+                { id: 'aunt', name: 'ของป้า' }
+            ],
+            vault: {
+                me: [],
+                mom: [],
+                dad: [],
+                aunt: []
+            }
+        };
+
+        let currentProfile = 'me';
+
+        function unlockApp() {
+            const key = document.getElementById('masterKeyInput').value;
+            if(!key) { alert('กรุณากรอกรหัสผ่าน'); return; }
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.remove('hidden');
+            loadData();
+        }
+
+        function lockApp() {
+            document.getElementById('appScreen').classList.add('hidden');
+            document.getElementById('authScreen').classList.remove('hidden');
+            document.getElementById('masterKeyInput').value = '';
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('secure_vault_v2');
+            if(saved) { 
+                appData = JSON.parse(saved); 
+            }
+            // ตรวจสอบว่าโปรไฟล์ปัจจุบันยังมีอยู่ไหม ถ้าไม่มีให้เด้งไปคนแรก
+            const exists = appData.members.some(m => m.id === currentProfile);
+            if(!exists && appData.members.length > 0) {
+                currentProfile = appData.members[0].id;
+            }
+            renderTabs();
+            renderList();
+        }
+
+        function saveData() {
+            localStorage.setItem('secure_vault_v2', JSON.stringify(appData));
+        }
+
+        function renderTabs() {
+            const tabsDiv = document.getElementById('profileTabs');
+            tabsDiv.innerHTML = appData.members.map(member => {
+                const isActive = member.id === currentProfile;
+                const btnClass = isActive 
+                    ? "p-3 rounded-xl text-left transition bg-indigo-600 text-white shadow-md" 
+                    : "p-3 rounded-xl text-left transition bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700";
+                
+                return `
+                    <button onclick="switchProfile('${member.id}')" class="${btnClass}">
+                        <p class="text-[10px] ${isActive ? 'text-indigo-200' : 'text-slate-500'}">สมาชิก</p>
+                        <p class="font-bold text-sm truncate">👤 ${member.name}</p>
+                    </button>
+                `;
+            }).join('');
+
+            // อัปเดตชื่อหัวข้อปัจจุบัน
+            const currentObj = appData.members.find(m => m.id === currentProfile);
+            document.getElementById('currentProfileTitle').innerText = `กำลังจัดการข้อมูลของ: ${currentObj ? currentObj.name : '-'}`;
+        }
+
+        function switchProfile(profileId) {
+            currentProfile = profileId;
+            renderTabs();
+            renderList();
+        }
+
+        function renderList() {
+            const listDiv = document.getElementById('passwordList');
+            if (!appData.vault[currentProfile]) {
+                appData.vault[currentProfile] = [];
+            }
+            const items = appData.vault[currentProfile];
+
+            if (items.length === 0) {
+                listDiv.innerHTML = `<div class="text-center py-10 text-slate-500 text-xs">ยังไม่มีข้อมูลในหมวดหมู่นี้</div>`;
+                return;
+            }
+
+            listDiv.innerHTML = items.map(item => `
+                <div class="p-4 bg-slate-900/50 border border-slate-700/60 rounded-xl flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-sm text-slate-200">${item.site}</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">User: ${item.user}</p>
+                        <p class="text-xs text-slate-500">Pass: <code class="bg-slate-800 text-indigo-400 px-1.5 py-0.5 rounded font-mono">${item.pass}</code></p>
+                    </div>
+                    <button onclick="deleteItem(${item.id})" class="text-xs text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg">🗑️ ลบ</button>
+                </div>
+            `).join('');
+        }
+
+        // จัดการ Modal เพิ่มรหัสผ่าน
+        function openModal() { document.getElementById('addModal').classList.remove('hidden'); document.getElementById('addModal').classList.add('flex'); }
+        function closeModal() { document.getElementById('addModal').classList.remove('flex'); document.getElementById('addModal').classList.add('hidden'); document.getElementById('siteInput').value=''; document.getElementById('userInput').value=''; document.getElementById('passInput').value=''; }
+
+        function savePassword() {
+            const site = document.getElementById('siteInput').value;
+            const user = document.getElementById('userInput').value;
+            const pass = document.getElementById('passInput').value;
+
+            if(!site || !user || !pass) { alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
+
+            if(!appData.vault[currentProfile]) {
+                appData.vault[currentProfile] = [];
+            }
+
+            appData.vault[currentProfile].push({ id: Date.now(), site, user, pass });
+            saveData();
+            closeModal();
+            renderList();
+        }
+
+        function deleteItem(id) {
+            if(confirm('ต้องการลบรายการนี้ใช่ไหม?')) {
+                appData.vault[currentProfile] = appData.vault[currentProfile].filter(i => i.id !== id);
+                saveData();
+                renderList();
+            }
+        }
+
+        // จัดการ Modal เพิ่มสมาชิกใหม่
+        function openMemberModal() { document.getElementById('memberModal').classList.remove('hidden'); document.getElementById('memberModal').classList.add('flex'); }
+        function closeMemberModal() { document.getElementById('memberModal').classList.remove('flex'); document.getElementById('memberModal').classList.add('hidden'); document.getElementById('memberNameInput').value=''; }
+
+        function saveNewMember() {
+            const name = document.getElementById('memberNameInput').value.trim();
+            if(!name) { alert('กรุณากรอกชื่อสมาชิก'); return; }
+
+            // สร้าง ID จากเวลาปัจจุบัน
+            const id = 'member_' + Date.now();
+            
+            appData.members.push({ id: id, name: name });
+            appData.vault[id] = []; // สร้างช่องเก็บรหัสผ่านเปล่าๆ ให้สมาชิกใหม่
+
+            saveData();
+            closeMemberModal();
+            switchProfile(id); // สลับไปหน้าสมาชิกใหม่ทันที
+        }
+    </script>
+</body>
+</html>
